@@ -48,7 +48,7 @@ jobs:
       - id: generate_license_finder_report
         run: |
           ln -s LicenseFinder/dlf /usr/local/bin
-          ls -l 
+          ls -l / 
           dlf license_finder --help
 
   #     - uses: actions/upload-artifact@v4
