@@ -45,11 +45,7 @@ jobs:
           echo "commit_timestamp=$(date +'%Y/%m/%d')" >> "$GITHUB_OUTPUT"
       - id: generate_license_finder_report
         run: |
-          cat <<EOT >> Gemfile
-          source 'https://rubygems.org'
-          gem 'license_finder'
-          EOT
-          bundle install
+          gem install license_finder
 
           # if the repository is go-services, we need to run the following license_finder command passing --project-path 
           if [ "${{ inputs.repository }}" == "go-services" ]; then
@@ -58,10 +54,10 @@ jobs:
             echo "HERE"
             echo $pwd
 
-            bundle exec license_finder report --decisions-file=license/dependency_decisions.yml --save=license_report.csv --format=csv \
+            license_finder report --decisions-file=license/dependency_decisions.yml --save=license_report.csv --format=csv \
               --columns=name version licenses approved_by > /dev/null || 1
           else
-            bundle exec license_finder report --decisions-file=license/dependency_decisions.yml --save=license_report.csv --format=csv \
+            license_finder report --decisions-file=license/dependency_decisions.yml --save=license_report.csv --format=csv \
               --columns=name version licenses approved_by > /dev/null || 1
           fi
 
