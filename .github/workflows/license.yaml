@@ -29,7 +29,9 @@ jobs:
       matrix:
         project: [dora]
     container:
-      image: ruby:3.2.4
+      image: licensefinder/license_finder
+      volumes:
+        - "${{ github.workspace }}:/scan"
     timeout-minutes: 20
     defaults:
       run:
@@ -45,22 +47,7 @@ jobs:
           echo "commit_timestamp=$(date +'%Y/%m/%d')" >> "$GITHUB_OUTPUT"
       - id: generate_license_finder_report
         run: |
-          gem install license_finder
-
-          # if the repository is go-services, we need to run the following license_finder command passing --project-path 
-          if [ "${{ inputs.repository }}" == "go-services" ]; then
-            
-            pwd
-
-            which license_finder
-
-            license_finder version
-            
-            license_finder --debug --decisions-file=./dependency_decisions.yaml
-          else
-            license_finder report --decisions-file=license/dependency_decisions.yml --save=license_report.csv --format=csv \
-              --columns=name version licenses approved_by > /dev/null || 1
-          fi
+          license_finder --help
 
   #     - uses: actions/upload-artifact@v4
   #       with:
