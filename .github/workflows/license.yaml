@@ -54,6 +54,12 @@ jobs:
             echo "HERE"
             pwd
 
+            which license_finder
+
+            license_finder version
+            
+            license_finder 
+
             license_finder report --decisions-file=license/dependency_decisions.yml > /dev/null || 1
           else
             license_finder report --decisions-file=license/dependency_decisions.yml --save=license_report.csv --format=csv \
