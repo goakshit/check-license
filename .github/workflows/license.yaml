@@ -52,10 +52,9 @@ jobs:
             cd cmd/license
 
             echo "HERE"
-            echo $pwd
+            pwd
 
-            license_finder report --decisions-file=license/dependency_decisions.yml --save=license_report.csv --format=csv \
-              --columns=name version licenses approved_by > /dev/null || 1
+            license_finder report --decisions-file=license/dependency_decisions.yml > /dev/null || 1
           else
             license_finder report --decisions-file=license/dependency_decisions.yml --save=license_report.csv --format=csv \
               --columns=name version licenses approved_by > /dev/null || 1
