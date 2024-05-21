@@ -53,7 +53,7 @@ jobs:
 
           # if the repository is go-services, we need to run the following license_finder command passing --project-path 
           if [ "${{ inputs.repository }}" == "go-services" ]; then
-            cd cmd/dora
+            cd cmd/license
 
             echo "HERE"
             echo $pwd
