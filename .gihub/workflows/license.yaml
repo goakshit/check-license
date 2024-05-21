@@ -1,0 +1,144 @@
+name: License
+on:
+  workflow_call:
+    inputs:
+      repository:
+        description: "The repository to run the license workflow on"
+        type: string
+        required: true
+      project:
+        description: "The project to check for license"
+        type: string
+        required: true
+jobs:
+  # setup:
+  #   runs-on: [self-hosted, shared-gcp]
+  #   outputs:
+  #     projects: ${{ steps.vars.outputs.project_list }}
+  #   steps:
+  #     - name: Create an array of projects
+  #       id: vars
+  #       run: echo "project_list=project_list::$(jq 'split(",")' -Rc <(echo '${{ inputs.project }}'))" >> "$GITHUB_OUTPUT"
+  #     - name: Verify
+  #       run: echo ${GITHUB_OUTPUT}
+  generate-license:
+    name: Generate License
+    # needs: setup
+    runs-on: [ubuntu]
+    strategy:
+      matrix:
+        project: [dora]
+    container:
+      image: ruby:3.2.4
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    outputs:
+      artifact_name: ${{ steps.export_artifact_name.outputs.artifact_name }}
+      commit_timestamp: ${{ steps.generate_license_finder_report.outputs.commit_timestamp }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Config bundler for github private gems
+        run: |
+          # Set the commit timestamp
+          echo "commit_timestamp=$(date +'%Y/%m/%d')" >> "$GITHUB_OUTPUT"
+      - id: generate_license_finder_report
+        run: |
+          cat <<EOT >> Gemfile
+          source 'https://rubygems.org'
+          gem 'license_finder'
+          EOT
+
+          bundle install
+
+          # if the repository is go-services, we need to run the following license_finder command passing --project-path 
+          if [ "${{ inputs.repository }}" == "go-services" ]; then
+            cd cmd/dora
+
+            echo "HERE"
+            echo $pwd
+
+            bundle exec license_finder report --decisions-file=license/dependency_decisions.yml --save=license_report.csv --format=csv \
+              --columns=name version licenses approved_by > /dev/null || 1
+          else
+            bundle exec license_finder report --decisions-file=license/dependency_decisions.yml --save=license_report.csv --format=csv \
+              --columns=name version licenses approved_by > /dev/null || 1
+          fi
+
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: license_report_${{ inputs.project }}_${{ github.run_id }}
+  #         path: license_report.csv
+  #         if-no-files-found: error
+  #         retention-days: 1
+  #     - id: export_artifact_name
+  #       run: |
+  #         echo "artifact_name=license_report_${{ inputs.project }}_${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+
+  # upload-license:
+  #   name: Upload license csv
+  #   needs: generate-license
+  #   runs-on: [self-hosted, shared-gcp]
+  #   container:
+  #     image: python:3.10
+  #   timeout-minutes: 20
+  #   defaults:
+  #     run:
+  #       shell: bash
+  #   env:
+  #     ARTIFACT_NAME: ${{needs.generate-license.outputs.artifact_name}}
+  #     COMMIT_TIMESTAMP: ${{needs.generate-license.outputs.commit_timestamp}}
+  #     REPOSITORY_NAME: ${{ inputs.repository }}
+  #     PROJECT_NAME: ${{inputs.project}}
+  #     BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Install Python dependencies
+  #       run: |
+  #         python3 -m pip install --upgrade pip pandas
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: ${{env.ARTIFACT_NAME}}
+  #         path: .
+  #     - name: Set commit ID
+  #       run: echo "GITHUB_COMMIT_ID=`echo ${{github.sha}} | cut -c1-8`" >> $GITHUB_ENV
+  #     - name: Update license csv
+  #       run: |
+
+  #         python3 <<HEREDOC
+  #         import os
+  #         import pandas as pd
+
+  #         # Get the GitHub commit ID  & branch from environment variable
+  #         github_commit_id = os.environ.get("GITHUB_COMMIT_ID")
+  #         github_branch = os.environ.get("BRANCH_NAME")
+  #         github_repo = os.environ.get("REPOSITORY_NAME")
+  #         project_name = os.environ.get("PROJECT_NAME")
+  #         commit_timestamp = os.environ.get("COMMIT_TIMESTAMP")
+
+  #         # Read the CSV file into a DataFrame
+  #         df = pd.read_csv("license_report.csv", header=None, names=["Package Name", "Version", "License", "Commit ID", "Branch", "Timestamp", "Repository", "Project", "Approved By"])
+
+  #         # Add a new column with the current GitHub commit
+  #         df["Commit ID"] = github_commit_id
+
+  #         df["Branch"] = github_branch
+
+  #         df["Timestamp"] = commit_timestamp
+
+  #         df["Repository"] = github_repo
+
+  #         df["Project"] = project_name
+
+  #         df.to_csv("license_report.csv", index=False)
+  #         HEREDOC
+  #     - uses: keithweaver/aws-s3-github-action@v1.0.0
+  #       name: upload the license report
+  #       with:
+  #         command: cp
+  #         source: license_report.csv
+  #         destination: "s3://mondu-licenses-prod/${{env.COMMIT_TIMESTAMP}}/${{inputs.project}}/${{env.GITHUB_COMMIT_ID}}.csv"
+  #         aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #         aws_region: eu-central-1
