@@ -1,133 +1,111 @@
-name: License
+name: Upload license
+
 on:
   workflow_call:
     inputs:
-      repository:
-        description: "The repository to run the license workflow on"
-        type: string
+      artifact_name:
         required: true
-      project:
-        description: "The project to check for license"
         type: string
+      commit_id:
         required: true
+        type: string
+      repository_name:
+        required: true
+        type: string
+      project_name:
+        required: true
+        type: string
+      branch_name:
+        required: true
+        type: string
+
 jobs:
-  # setup:
-  #   runs-on: [self-hosted, shared-gcp]
-  #   outputs:
-  #     projects: ${{ steps.vars.outputs.project_list }}
-  #   steps:
-  #     - name: Create an array of projects
-  #       id: vars
-  #       run: echo "project_list=project_list::$(jq 'split(",")' -Rc <(echo '${{ inputs.project }}'))" >> "$GITHUB_OUTPUT"
-  #     - name: Verify
-  #       run: echo ${GITHUB_OUTPUT}
-  generate-license:
-    name: Generate License
-    # needs: setup
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        project: [dora]
+  upload-license:
+    name: Upload license csv
+    runs-on: [self-hosted, shared-gcp]
     container:
-      image: ruby:3.2.4
+      image: python:3.10
     timeout-minutes: 20
     defaults:
       run:
         shell: bash
-    outputs:
-      artifact_name: ${{ steps.export_artifact_name.outputs.artifact_name }}
-      commit_timestamp: ${{ steps.generate_license_finder_report.outputs.commit_timestamp }}
+    env:
+      ARTIFACT_NAME: ${{inputs.artifact_name}}
+      BRANCH_NAME: ${{inputs.branch_name}}
+      GITHUB_COMMIT_ID: ${{inputs.commit_id}}
+      PROJECT_NAME: ${{inputs.project_name}}
+      REPOSITORY_NAME: ${{inputs.repository_name}}
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v5
+      - name: Install Python dependencies
+        run: |
+          python3 -m pip install --upgrade pip pandas
+      - uses: actions/download-artifact@v4
         with:
-          go-version: "^1.22" # The Go version to download (if necessary) and use.
-      - run: go version
-
-      - name: Config bundler for github private gems
+          name: ${{env.ARTIFACT_NAME}}
+          path: .
+      - name: Set commit ID
         run: |
-          cat <<EOT >> Gemfile
-          source 'https://rubygems.org'
-          gem 'license_finder'
-          EOT
-      - id: generate_license_finder_report
+          # Set the commit timestamp
+          echo "COMMIT_TIMESTAMP=$(date +'%Y/%m/%d')" >> "$GITHUB_ENV"
+
+          # Timestamp s3 path
+          echo "S3_DATE=$(date +'%d')" >> $GITHUB_ENV
+          echo "S3_MONTH=$(date +'%m')" >> $GITHUB_ENV
+          echo "S3_YEAR=$(date +'%Y')" >> $GITHUB_ENV
+      - name: Update license csv
         run: |
-          bundle install --quiet
-          bundle exec license_finder --project-path=cmd/license --format=text
 
-  #     - uses: actions/upload-artifact@v4
-  #       with:
-  #         name: license_report_${{ inputs.project }}_${{ github.run_id }}
-  #         path: license_report.csv
-  #         if-no-files-found: error
-  #         retention-days: 1
-  #     - id: export_artifact_name
-  #       run: |
-  #         echo "artifact_name=license_report_${{ inputs.project }}_${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+          python3 <<HEREDOC
+          import os
+          import pandas as pd
 
-  # upload-license:
-  #   name: Upload license csv
-  #   needs: generate-license
-  #   runs-on: [self-hosted, shared-gcp]
-  #   container:
-  #     image: python:3.10
-  #   timeout-minutes: 20
-  #   defaults:
-  #     run:
-  #       shell: bash
-  #   env:
-  #     ARTIFACT_NAME: ${{needs.generate-license.outputs.artifact_name}}
-  #     COMMIT_TIMESTAMP: ${{needs.generate-license.outputs.commit_timestamp}}
-  #     REPOSITORY_NAME: ${{ inputs.repository }}
-  #     PROJECT_NAME: ${{inputs.project}}
-  #     BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - name: Install Python dependencies
-  #       run: |
-  #         python3 -m pip install --upgrade pip pandas
-  #     - uses: actions/download-artifact@v4
-  #       with:
-  #         name: ${{env.ARTIFACT_NAME}}
-  #         path: .
-  #     - name: Set commit ID
-  #       run: echo "GITHUB_COMMIT_ID=`echo ${{github.sha}} | cut -c1-8`" >> $GITHUB_ENV
-  #     - name: Update license csv
-  #       run: |
+          # Get the GitHub commit ID  & branch from environment variable
+          github_commit_id = os.environ.get("GITHUB_COMMIT_ID")
+          github_branch = os.environ.get("BRANCH_NAME")
+          github_repo = os.environ.get("REPOSITORY_NAME")
+          project_name = os.environ.get("PROJECT_NAME")
+          commit_timestamp = os.environ.get("COMMIT_TIMESTAMP")
 
-  #         python3 <<HEREDOC
-  #         import os
-  #         import pandas as pd
+          licenses = {
+              'Apache 2.0': ['Apache 2.0', 'Apache License (2.0)'],
+              'BSD-2-Clause': ['BSD-2-Clause'],
+              'Simplified BSD': ['Simplified BSD','Simplified BSD,ruby'],
+              'New BSD': ['New BSD'],
+              'LGPL': ['LGPL'],
+              'GPL-3': ['GPL-3.0', 'GPL-3'],
+              'GPL-2': ['GPL-2.0', 'GPL-2','GPL-2.0-or-later','GPL-2.0,GPL-3.0,PRAWN','GPL-2,GPL-3,ruby']
+          }
 
-  #         # Get the GitHub commit ID  & branch from environment variable
-  #         github_commit_id = os.environ.get("GITHUB_COMMIT_ID")
-  #         github_branch = os.environ.get("BRANCH_NAME")
-  #         github_repo = os.environ.get("REPOSITORY_NAME")
-  #         project_name = os.environ.get("PROJECT_NAME")
-  #         commit_timestamp = os.environ.get("COMMIT_TIMESTAMP")
+          inverted_licenses = {syn: key for key, syns in licenses.items() for syn in syns}
 
-  #         # Read the CSV file into a DataFrame
-  #         df = pd.read_csv("license_report.csv", header=None, names=["Package Name", "Version", "License", "Commit ID", "Branch", "Timestamp", "Repository", "Project", "Approved By"])
 
-  #         # Add a new column with the current GitHub commit
-  #         df["Commit ID"] = github_commit_id
+          # Read the CSV file into a DataFrame
+          df = pd.read_csv("license_report.csv", header=None, names=["package_name", "version", "license", "commit_id", "branch", "timestamp", "repository", "project"])
 
-  #         df["Branch"] = github_branch
+          # Cleanup license column
+          df["license"] = df["license"].replace(inverted_licenses)
 
-  #         df["Timestamp"] = commit_timestamp
+          # Add a new column with the current GitHub commit
+          df["commit_id"] = github_commit_id
 
-  #         df["Repository"] = github_repo
+          df["branch"] = github_branch
 
-  #         df["Project"] = project_name
+          df["timestamp"] = commit_timestamp
 
-  #         df.to_csv("license_report.csv", index=False)
-  #         HEREDOC
-  #     - uses: keithweaver/aws-s3-github-action@v1.0.0
-  #       name: upload the license report
-  #       with:
-  #         command: cp
-  #         source: license_report.csv
-  #         destination: "s3://mondu-licenses-prod/${{env.COMMIT_TIMESTAMP}}/${{inputs.project}}/${{env.GITHUB_COMMIT_ID}}.csv"
-  #         aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  #         aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  #         aws_region: eu-central-1
+          df["repository"] = github_repo
+
+          df["project"] = project_name
+
+          df.to_csv("license_report.csv", index=False)
+          HEREDOC
+
+      - uses: keithweaver/aws-s3-github-action@v1.0.0
+        name: upload the license report
+        with:
+          command: cp
+          source: license_report.csv
+          destination: "s3://licenses-prod/${{inputs.project_name}}/year=${{env.S3_YEAR}}/month=${{env.S3_MONTH}}/day=${{env.S3_DATE}}/${{env.GITHUB_COMMIT_ID}}.csv"
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: eu-central-1
