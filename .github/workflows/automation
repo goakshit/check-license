@@ -1,0 +1,26 @@
+name: Automation
+
+on:
+  push:
+    branches-ignore: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Add steps here to build your project and generate artifacts
+      - name: Build and create artifact
+        run: |
+          # Replace this with your build command
+          echo "Building the project"
+          mkdir -p output
+          echo "Artifact content" > output/artifact.txt
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: my-artifact
+          path: output/
