@@ -4,8 +4,6 @@ on:
     workflows: ["Automation"]
     types:
       - completed
-    branches:
-      - main
 jobs:
   download-artifact:
     runs-on: ubuntu-latest
