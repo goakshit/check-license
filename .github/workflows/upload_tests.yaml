@@ -1,14 +1,13 @@
 name: Upload Tests
 on:
-  workflow_run:
-    workflows: ["Automation"]
+  pull_request:
     types:
-      - completed
+      - closed
 
 jobs:
   download-artifact:
     runs-on: ubuntu-latest
-
+    if: github.event.pull_request.merged == true
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -20,9 +19,11 @@ jobs:
         id: get_run_id
         run: |
           run_id=$(curl -s -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
-                    "https://api.github.com/repos/${{ github.repository }}/actions/runs?branch=master&status=success" | \
+                    "https://api.github.com/repos/${{ github.repository }}/actions/runs?branch=${{github.branch}}&status=success" | \
                     jq -r '.workflow_runs[0].id')
           echo $run_id
+          echo ${{github.branch}}
+          echo ${{github.event.pull_request.head.sha}}
           echo "run_id=$run_id" >> $GITHUB_ENV
           echo $GITHUB_ENV
 
