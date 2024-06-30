@@ -1,13 +1,11 @@
 name: Upload Tests
 on:
-  pull_request:
-    types:
-      - closed
+  push:
+    branches: [ master ]
 
 jobs:
   download-artifact:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
