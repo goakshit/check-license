@@ -1,43 +1,42 @@
-name: Upload Tests
+name: Download Artifacts on PR Merge
+
 on:
   push:
-    branches: [ master ]
+    branches:
+      - master
 
 jobs:
-  download-artifact:
+  download-artifacts:
     runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Checkout main branch
+        uses: actions/checkout@v3
 
-      - name: Install jq
-        run: sudo apt-get install -y jq
+      - name: Get PR details
+        id: get_pr
+        uses: octokit/request-action@v2
+        with:
+          route: GET /repos/:repository/pulls?state=closed&sort=updated&direction=desc
+          repository: ${{ github.repository }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
-      - name: Get the latest workflow run ID
-        id: get_run_id
+      - name: Parse PR details
+        id: parse_pr
         run: |
-          run_id=$(curl -s -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
-                    "https://api.github.com/repos/${{ github.repository }}/actions/runs?branch=master&status=success" | \
-                    jq -r '.workflow_runs[0].id')
-          echo ${{github.branch}}
-          echo ${{github.event.pull_request.head.sha}}
-          echo "run_id=$run_id" >> $GITHUB_ENV
-          echo $GITHUB_ENV
+          import json
+          pr_data = json.loads('${{ steps.get_pr.outputs.data }}')
+          for pr in pr_data:
+            if pr['merged_at'] and pr['merge_commit_sha'] == '${{ github.sha }}':
+              print(f"::set-output name=pr_number::{pr['number']}")
+              print(f"::set-output name=head_sha::{pr['head']['sha']}")
+              break
+        shell: python
 
-      - name: Get the artifact ID
-        id: get_artifact_id
-        run: |
-          artifact_id=$(curl -s -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
-                       "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ env.run_id }}/artifacts" | \
-                       jq -r '.artifacts[] | select(.name=="my-artifact") | .id')
-          echo "artifact_id=$artifact_id" >> $GITHUB_ENV
-
-      - name: Download the artifact
-        run: |
-          curl -L -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
-               -o artifact.zip \
-               "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/${{ env.artifact_id }}/zip"
-          unzip artifact.zip -d downloaded-artifacts
-
-      - name: List files in downloaded-artifacts
-        run: ls -l downloaded-artifacts
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: my-artifact
+          path: ./artifact
