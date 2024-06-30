@@ -3,40 +3,73 @@ name: Download Artifacts on PR Merge
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
   download-artifacts:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true
 
     steps:
       - name: Checkout main branch
         uses: actions/checkout@v3
 
-      - name: Get PR details
-        id: get_pr
+      - name: Get the list of closed PRs
+        id: get_prs
         uses: octokit/request-action@v2
         with:
-          route: GET /repos/:repository/pulls?state=closed&sort=updated&direction=desc
-          repository: ${{ github.repository }}
+          route: GET /repos/${{ github.repository }}/pulls?state=closed&sort=updated&direction=desc
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
-      - name: Parse PR details
-        id: parse_pr
+      - name: Find the merged PR associated with this commit
+        id: find_pr
         run: |
           import json
-          pr_data = json.loads('${{ steps.get_pr.outputs.data }}')
+
+          pr_data = json.loads('${{ steps.get_prs.outputs.data }}')
+          merged_pr = None
+
           for pr in pr_data:
             if pr['merged_at'] and pr['merge_commit_sha'] == '${{ github.sha }}':
-              print(f"::set-output name=pr_number::{pr['number']}")
-              print(f"::set-output name=head_sha::{pr['head']['sha']}")
+              merged_pr = pr
               break
-        shell: python
 
-      - name: Download artifact
-        uses: actions/download-artifact@v3
+          if not merged_pr:
+            raise Exception("No merged PR found for this commit")
+
+          print(f"::set-output name=pr_number::{merged_pr['number']}")
+          print(f"::set-output name=head_sha::{merged_pr['head']['sha']}")
+
+      - name: Get the list of artifacts
+        id: get_artifacts
+        uses: octokit/request-action@v2
         with:
-          name: my-artifact
-          path: ./artifact
+          route: GET /repos/${{ github.repository }}/actions/artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download the artifact
+        if: steps.find_pr.outputs.head_sha != ''
+        run: |
+          import json
+          import urllib.request
+
+          artifacts = json.loads('${{ steps.get_artifacts.outputs.data }}')['artifacts']
+          pr_head_sha = '${{ steps.find_pr.outputs.head_sha }}'
+          artifact_to_download = None
+
+          for artifact in artifacts:
+            if pr_head_sha in artifact['name']:
+              artifact_to_download = artifact
+              break
+
+          if not artifact_to_download:
+            raise Exception("No artifact found for the original PR commit SHA")
+
+          download_url = artifact_to_download['archive_download_url']
+          headers = {"Authorization": "token ${{ secrets.GITHUB_TOKEN }}"}
+
+          req = urllib.request.Request(download_url, headers=headers)
+          with urllib.request.urlopen(req) as response:
+            with open('/tmp/artifact.zip', 'wb') as out_file:
+              out_file.write(response.read())
