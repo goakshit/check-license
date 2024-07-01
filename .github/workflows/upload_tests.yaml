@@ -31,7 +31,7 @@ jobs:
       - name: Download artifact
         run: |
           # Extract the URL of the first artifact from the response
-          ARTIFACT_URL=$(echo "${{ steps.get_artifacts.outputs.data }}" | jq -r '.artifacts[0].archive_download_url')
+          ARTIFACT_URL=$(echo '${{ steps.get_artifacts.outputs.data }}' | jq -r '.artifacts[0].archive_download_url')
           echo "Downloading artifact from $ARTIFACT_URL"
           
           # Download the artifact using wget
