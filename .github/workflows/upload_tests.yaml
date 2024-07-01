@@ -38,7 +38,7 @@ jobs:
                -o artifact.zip \
                "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID/zip"
           ls -l
-          unzip artifact.zip -d downloaded-artifacts
+          unzip artifact.zip
 
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
