@@ -31,7 +31,7 @@ jobs:
       - name: Download artifact
         run: |
           # Extract the URL of the first artifact from the response
-          ARTIFACT_ID=$(echo '${{ steps.get_artifacts.outputs.data }}' | jq -r '.artifacts[]| select(.workflow_run.head_branch == ${{env.BRANCH}}) | | .id')
+          ARTIFACT_ID=$(echo '${{ steps.get_artifacts.outputs.data }}' | jq -r '.artifacts[]| select(.workflow_run.head_branch == '${{env.BRANCH}}') | | .id')
           echo "Downloading artifact with ID $ARTIFACT_ID"
           
           curl -L -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
