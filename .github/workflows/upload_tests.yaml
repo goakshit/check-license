@@ -28,6 +28,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
-      - name: list artifacts
+      - name: Download artifact
         run: |
-          echo Release found: '${{ steps.get_artifacts.outputs.data }}'
+          # Extract the URL of the first artifact from the response
+          ARTIFACT_URL=$(echo "${{ steps.get_artifacts.outputs.data }}" | jq -r '.artifacts[0].archive_download_url')
+          echo "Downloading artifact from $ARTIFACT_URL"
+          
+          # Download the artifact using wget
+          wget -q --show-progress --progress=bar:force:noscroll -O artifact.zip "$ARTIFACT_URL"
+
+          # Unzip the artifact
+          unzip -q artifact.zip -d artifact_folder  # Adjust the destination folder as per your need
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
