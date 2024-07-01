@@ -39,7 +39,7 @@ jobs:
                "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID/zip"
           ls -l
           mkdir results
-          unzip artifact.zip -d results
+          jar xvf artifact.zip
 
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
