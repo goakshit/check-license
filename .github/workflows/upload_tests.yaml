@@ -13,7 +13,7 @@ jobs:
       - name: Checkout main branch
         uses: actions/checkout@v3
         with:
-          fetch-depth: '2'
+          fetch-depth: '0'
 
       - name: get_branch_to_run
         run: |
