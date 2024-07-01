@@ -15,7 +15,7 @@ jobs:
 
       - name: get_branch_to_run
         run: |
-           BRANCH=$(git branch -r --sort=-committerdate --format='%(HEAD)%(refname:short)' | head -2 | tail -1)
+           BRANCH=$(git branch -r --sort=-committerdate --format='%(HEAD)%(refname:short)')
            echo "BRANCH=$BRANCH" >> $GITHUB_ENV
 
       - name: Get the list of artifacts
