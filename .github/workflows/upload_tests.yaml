@@ -30,4 +30,4 @@ jobs:
 
       - name: list artifacts
         run: |
-           ls -l
+          echo Release found: '${{ steps.get_artifacts.outputs.data }}'
