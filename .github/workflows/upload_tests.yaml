@@ -20,7 +20,7 @@ jobs:
 
       - name: Get the list of artifacts
         id: get_artifacts
-        uses: octokit/request-action@v2
+        uses: octokit/request-action@v2.3.1
         with:
           route: GET /repos/${{ github.repository }}/actions/artifacts?branch=${{ env.BRANCH }}
         env:
