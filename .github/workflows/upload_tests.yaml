@@ -18,7 +18,7 @@ jobs:
 
       - name: get_branch_to_run
         run: |
-           echo $github.head_ref
+           echo ${{github.head_ref}}
            BRANCH=$(git branch -r --sort=-committerdate --format='%(HEAD)%(refname:short)' | sed 's/origin\///' |  head -2 | tail -1)
            echo "BRANCH=$BRANCH" >> $GITHUB_ENV
 
