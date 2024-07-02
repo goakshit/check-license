@@ -28,13 +28,14 @@ jobs:
         run: |
           # Extract the URL of the first artifact from the response
           ARTIFACT_ID=$(echo '${{ steps.get_artifacts.outputs.data }}' | jq -r '.artifacts[]| select(.workflow_run.head_branch=="${{github.head_ref}}")|.id')
+
+          echo $ARTIFACT_ID
           
           curl -L -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
                -o test-results \
                "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID/zip"
-
-          unzip test-results '*.json' -d results
           ls -l
+          unzip test-results '*.json' -d results
       - name: display results
         run: |
           ls -l results 
