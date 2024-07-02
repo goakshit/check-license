@@ -33,7 +33,7 @@ jobs:
                -o test-results \
                "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID/zip"
 
-          unzip test-results
+          unzip test-results '*.txt' -d results
           ls -l
       - name: display results
         run: |
