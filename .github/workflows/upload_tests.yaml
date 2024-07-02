@@ -34,7 +34,52 @@ jobs:
                "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID/zip"
           
           unzip test-results '*.json' -d results
-      - name: display results
+      
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+  
+      - name: Create convert_json_to_csv.py
         run: |
-          ls -l results 
-          cat results/artifact.json
+          cat << 'EOF' > convert_json_to_csv.py
+          import json
+          import csv
+          import sys
+          import os
+  
+          def json_to_csv(input_dir, output_csv):
+              data = []
+              headers = set()
+  
+              # Read all JSON files in the directory
+              for filename in os.listdir(input_dir):
+                  if filename.endswith('.json'):
+                      filepath = os.path.join(input_dir, filename)
+                      with open(filepath, 'r') as f:
+                          json_data = json.load(f)
+                          if isinstance(json_data, list):
+                              data.extend(json_data)
+                          else:
+                              data.append(json_data)
+                          headers.update(json_data[0].keys())
+  
+              headers = list(headers)
+  
+              # Write data to CSV
+              with open(output_csv, 'w', newline='') as f:
+                  writer = csv.writer(f)
+                  writer.writerow(headers)
+                  for row in data:
+                      writer.writerow([row.get(header, '') for header in headers])
+  
+          if __name__ == "__main__":
+              input_dir = sys.argv[1]
+              output_csv = sys.argv[2]
+              json_to_csv(input_dir, output_csv)
+          EOF
+
+      - name: generate csv
+        run: |
+          touch test_results.csv
+          python convert_json_to_csv.py results test_results.csv
