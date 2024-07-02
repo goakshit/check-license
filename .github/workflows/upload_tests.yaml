@@ -28,23 +28,24 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
-      - name: Download artifact GH
-        uses: actions/download-artifact@v3
-        with:
-          name: my-artifact
-
       - name: Download artifact
         run: |
           # Extract the URL of the first artifact from the response
           ARTIFACT_ID=$(echo '${{ steps.get_artifacts.outputs.data }}' | jq -r '.artifacts[]| select(.workflow_run.head_branch=="${{env.BRANCH}}")|.id')
+          RUN_ID=$(echo '${{ steps.get_artifacts.outputs.data }}' | jq -r '.artifacts[]| select(.workflow_run.head_branch=="${{env.BRANCH}}")|.workflow_run.id')
           echo "Downloading artifact with ID $ARTIFACT_ID"
+          echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
           
           curl -L -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
                -o artifact.zip \
                "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID/zip"
           ls -l
-          mkdir results
-          jar xvf artifact.zip
 
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      
+      - name: Download artifact GH
+        uses: actions/download-artifact@v3
+        with:
+          name: my-artifact
+          run-id: ${{env.RUN_ID}}
