@@ -37,4 +37,5 @@ jobs:
           ls -l
       - name: display results
         run: |
-          cat artifact.txt
+          ls -l results
+          cat results/artifact.txt
