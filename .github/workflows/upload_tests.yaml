@@ -32,6 +32,9 @@ jobs:
           curl -L -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
                -o test-results \
                "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID/zip"
-          ls -l
 
           unzip test-results
+          ls -l
+      - name: display results
+        run: |
+          cat artifact.txt
