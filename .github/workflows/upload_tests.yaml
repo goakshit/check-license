@@ -30,6 +30,8 @@ jobs:
           ARTIFACT_ID=$(echo '${{ steps.get_artifacts.outputs.data }}' | jq -r '.artifacts[]| select(.workflow_run.head_branch=="${{github.head_ref}}")|.id')
           
           curl -L -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
-               -o artifact.zip \
+               -o test-results \
                "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID/zip"
           ls -l
+
+          unzip test-results
