@@ -53,32 +53,36 @@ jobs:
           import csv
           import sys
           import os
-  
+          
           def json_to_csv(input_dir, output_csv):
+              # import pdb; pdb.set_trace()
               data = []
-              headers = set()
-  
+          
+              # Define fixed headers
+              headers = ['id', 'status', 'run_time', 'description']
+          
               # Read all JSON files in the directory
               for filename in os.listdir(input_dir):
                   if filename.endswith('.json'):
                       filepath = os.path.join(input_dir, filename)
                       with open(filepath, 'r') as f:
                           json_data = json.load(f)
-                          if isinstance(json_data, list):
-                              data.extend(json_data)
-                          else:
-                              data.append(json_data)
-                          headers.update(json_data[0].keys())
-  
-              headers = list(headers)
-  
+                          test_results = json_data.get('examples', [])
+                          for test in test_results:
+                              # Filter out keys not present in headers
+                              filtered_test = {key: test[key] for key in headers if key in test}
+                              data.append(filtered_test)
+          
               # Write data to CSV
               with open(output_csv, 'w', newline='') as f:
-                  writer = csv.writer(f)
-                  writer.writerow(headers)
+                  writer = csv.DictWriter(f, fieldnames=headers)
+                  # Write headers
+                  writer.writeheader()
+                  
+                  # Write data
                   for row in data:
-                      writer.writerow([row.get(header, '') for header in headers])
-  
+                      writer.writerow(row)
+          
           if __name__ == "__main__":
               input_dir = sys.argv[1]
               output_csv = sys.argv[2]
