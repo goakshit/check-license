@@ -28,6 +28,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
+      - name: Download artifact GH
+        uses: actions/download-artifact@v3
+        with:
+          name: my-artifact
+
       - name: Download artifact
         run: |
           # Extract the URL of the first artifact from the response
@@ -43,7 +48,3 @@ jobs:
 
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-      - name: Download artifact GH
-        uses: actions/download-artifact@v3
-        with:
-          name: my-artifact
