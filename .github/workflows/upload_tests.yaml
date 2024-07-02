@@ -93,6 +93,4 @@ jobs:
         run: |
           touch test_results.csv
           python convert_json_to_csv.py results test_results.csv
-
-          # Done with generating csv
-          cat test_results.csv
+          echo "Successfully generated test_results"
