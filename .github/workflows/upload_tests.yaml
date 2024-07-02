@@ -16,12 +16,6 @@ jobs:
         with:
           fetch-depth: '0'
 
-      - name: get_branch_to_run
-        run: |
-           echo ${{github.head_ref}}
-           BRANCH=$(git branch -r --sort=-committerdate --format='%(HEAD)%(refname:short)' | sed 's/origin\///' |  head -2 | tail -1)
-           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
-
       - name: Get the list of artifacts
         id: get_artifacts
         uses: octokit/request-action@v2.3.1
@@ -33,7 +27,7 @@ jobs:
       - name: Download artifact
         run: |
           # Extract the URL of the first artifact from the response
-          ARTIFACT_ID=$(echo '${{ steps.get_artifacts.outputs.data }}' | jq -r '.artifacts[]| select(.workflow_run.head_branch=="${{env.BRANCH}}")|.id')
+          ARTIFACT_ID=$(echo '${{ steps.get_artifacts.outputs.data }}' | jq -r '.artifacts[]| select(.workflow_run.head_branch=="${{github.head_ref}}")|.id')
           
           curl -L -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
                -o artifact.zip \
