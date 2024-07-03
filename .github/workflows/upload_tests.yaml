@@ -40,10 +40,9 @@ jobs:
                "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID/zip"
 
           echo "Artifacts file downloaded"
-          ls -l
           
           mkdir results
-          unzip my-artifact '*.json' -d results
+          unzip test-results '*.json' -d results
       
       - name: Set up Python
         uses: actions/setup-python@v2
