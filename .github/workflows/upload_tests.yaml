@@ -27,19 +27,15 @@ jobs:
       - name: Download artifact
         run: |
          # Extract the URL of the first artifact from the response
-          ARTIFACT_DATA='${{ steps.get_artifacts.outputs.data }}'
-          HEAD_REF='${{ github.head_ref }}'
-          
-          ARTIFACT_ID=$(jq -r '
-            .artifacts[] 
-            | select(.workflow_run.head_branch == env.HEAD_REF) 
-            | .id' <<< "$ARTIFACT_DATA") || 0
+          ARTIFACT_ID=$(echo '${{ steps.get_artifacts.outputs.data }}' | jq -r '.artifacts[]| select(.workflow_run.head_branch=="${{github.head_ref}}")|.id')
+          echo $ARTIFACT_ID
           
           curl -L -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
                -o test-results \
                "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID/zip"
           echo "Artifacts file downloaded"
-
+          ls -l
+          
           mkdir results
           unzip test-results '*.json' -d results
       
