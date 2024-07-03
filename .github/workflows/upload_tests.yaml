@@ -42,7 +42,7 @@ jobs:
           echo "Artifacts file downloaded"
           
           mkdir results
-          unzip test-results '*.json' -d results
+          unzip my-artifact '*.json' -d results
       
       - name: Set up Python
         uses: actions/setup-python@v2
