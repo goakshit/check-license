@@ -24,20 +24,33 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
-      - name: Download artifact
+      - name: Get artifact ID
         run: |
-         # Extract the URL of the first artifact from the response
+          # Extract the URL of the first artifact from the response
           ARTIFACT_ID=$(echo '${{ steps.get_artifacts.outputs.data }}' | jq -r '.artifacts[]| select(.workflow_run.head_branch=="${{github.head_ref}}")|.id')
-          echo $ARTIFACT_ID
-          
-          curl -L -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
-               -o test-results \
-               "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID/zip"
+
+          echo ${{github.head_ref}}
+
+          if [ -z "$ARTIFACT_ID" ]; then
+            echo "Artifact ID failed to fetch"
+            exit 1
+          fi
+
+          echo "ARTIFACT_ID=$ARTIFACT_ID" >> $GITHUB_ENV
+
+      - name: Download artifacts
+        run: |
+          echo "Downloading artifact with ID ${{ env.ARTIFACT_ID }}"
+
+          curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -o test-results.zip \
+              "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/${{env.ARTIFACT_ID}}/zip"
+
           echo "Artifacts file downloaded"
-          ls -l
-          
+      - name: Unzip artifacts
+        run: |
           mkdir results
-          unzip test-results '*.json' -d results
+          unzip -j test-results.zip '*.json' -d results
       
       - name: Set up Python
         uses: actions/setup-python@v2
